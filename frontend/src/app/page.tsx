@@ -137,7 +137,7 @@ export default function Home() {
 
           {/* Tab Content */}
           <div className="min-h-screen">
-            {activeTab === 'send' && <SendPayment arcPayments={arcPayments} userAddress={userAddress} />}
+            {activeTab === 'send' && <SendPayment />}
             {activeTab === 'history' && <PaymentHistory userAddress={userAddress} />}
             {activeTab === 'admin' && isAdmin && <AdminDashboard />}
           </div>
