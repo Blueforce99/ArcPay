@@ -4,8 +4,14 @@ import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'react-toastify';
 
+// Declare window.ethereum to avoid TypeScript errors
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 const DEBUG_CONTRACT_ABI = [
-  // initiatePayment function
   {
     inputs: [
       { internalType: 'address', name: '_recipient', type: 'address' },
@@ -38,7 +44,7 @@ export default function DebugPayment() {
     try {
       log('🔌 [1] Getting window.ethereum...');
       
-      if (!window.ethereum) {
+      if (typeof window === 'undefined' || !window.ethereum) {
         throw new Error('MetaMask not found');
       }
       log('✅ Found window.ethereum');
@@ -119,7 +125,7 @@ export default function DebugPayment() {
         },
       ], signer);
 
-      const approveAmount = ethers.parseUnits('0.1', 6); // 0.1 USDC
+      const approveAmount = ethers.parseUnits('0.1', 6);
       log(`  Approving: ${ethers.formatUnits(approveAmount, 6)} USDC`);
       log(`  Spender (Contract): ${CONTRACT_ADDRESS}`);
       
@@ -131,23 +137,23 @@ export default function DebugPayment() {
 
       log('🔌 [8] Encoding initiatePayment call...');
       const encodedCall = paymentContract.interface.encodeFunctionData('initiatePayment', [
-        '0x0000000000000000000000000000000000000001', // recipient
-        USDC_ADDRESS, // token
-        approveAmount, // amount
-        'US', // recipientCountry
-        'US', // senderCountry
-        'crypto', // paymentMethod
+        '0x0000000000000000000000000000000000000001',
+        USDC_ADDRESS,
+        approveAmount,
+        'US',
+        'US',
+        'crypto',
       ]);
       log(`✅ Encoded call: ${encodedCall.substring(0, 66)}...`);
 
       log('🔌 [9] Creating initiatePayment transaction...');
       const tx = await paymentContract.initiatePayment(
-        '0x0000000000000000000000000000000000000001', // recipient
-        USDC_ADDRESS, // token
-        approveAmount, // amount
-        'US', // recipientCountry
-        'US', // senderCountry
-        'crypto', // paymentMethod
+        '0x0000000000000000000000000000000000000001',
+        USDC_ADDRESS,
+        approveAmount,
+        'US',
+        'US',
+        'crypto',
         {
           gasLimit: 300000n,
         }
@@ -169,9 +175,9 @@ export default function DebugPayment() {
         
         if (receipt.logs.length > 0) {
           log(`  Logs: ${receipt.logs.length} event(s)`);
-          receipt.logs.forEach((log, idx) => {
+          receipt.logs.forEach((logItem, idx) => {
             try {
-              const event = paymentContract.interface.parseLog(log);
+              const event = paymentContract.interface.parseLog(logItem);
               if (event) {
                 log(`    Event ${idx}: ${event.name}`);
               }
