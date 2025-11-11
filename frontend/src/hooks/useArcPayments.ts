@@ -200,7 +200,7 @@ export function useArcPayments({
               return null;
             }
           })
-          .find(e => e?.name === 'PaymentInitiated');
+          .find((e: any) => e?.name === 'PaymentInitiated');
 
         const paymentId = event?.args?.paymentId?.toString();
 
