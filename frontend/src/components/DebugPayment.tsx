@@ -175,7 +175,7 @@ export default function DebugPayment() {
         
         if (receipt.logs.length > 0) {
           log(`  Logs: ${receipt.logs.length} event(s)`);
-          receipt.logs.forEach((logItem, idx) => {
+          receipt.logs.forEach((logItem: any, idx: number) => {
             try {
               const event = paymentContract.interface.parseLog(logItem);
               if (event) {
