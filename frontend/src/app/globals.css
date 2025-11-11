@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f6ff 50%, #ffffff 100%);
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #1f2937;
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6495ff;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+/* Glassmorphism effect with white/blue theme */
+.glass {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(100, 149, 255, 0.1);
+}
+
+/* Gradient backgrounds - Circle Blue */
+.gradient-primary {
+  background: linear-gradient(135deg, #6495ff 0%, #4875ff 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+.gradient-error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* Card styles */
+.card {
+  @apply rounded-xl border border-neutral-200 bg-white p-6 shadow-md transition-all hover:shadow-lg hover:border-primary-200;
+}
+
+.card-interactive {
+  @apply cursor-pointer transition-all duration-200 hover:scale-105;
+}
+
+/* Button styles */
+.btn-base {
+  @apply rounded-lg font-semibold transition-all duration-200 font-medium;
+}
+
+.btn-primary {
+  @apply btn-base gradient-primary text-white px-6 py-3 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply btn-base border-2 border-primary-300 text-primary-700 px-6 py-3 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-sm {
+  @apply btn-base px-4 py-2 text-sm font-medium;
+}
+
+/* Input styles */
+.input-base {
+  @apply w-full rounded-lg border border-neutral-300 bg-white px-4 py-3 transition-all focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 font-medium;
+}
+
+.input-error {
+  @apply border-red-500 focus:border-red-500 focus:ring-red-100;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-700;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-700;
+}
+
+.badge-error {
+  @apply bg-red-100 text-red-700;
+}
+
+.badge-info {
+  @apply bg-primary-100 text-primary-700;
+}
+
+/* Typography */
+h1 {
+  @apply text-4xl font-bold tracking-tight text-neutral-900;
+}
+
+h2 {
+  @apply text-3xl font-bold tracking-tight text-neutral-900;
+}
+
+h3 {
+  @apply text-xl font-semibold text-neutral-900;
+}
+
+h4 {
+  @apply text-lg font-semibold text-neutral-900;
+}
+
+p {
+  @apply text-neutral-600;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse rounded bg-neutral-200;
+}
+
+/* Selection color - Circle Blue */
+::selection {
+  background-color: #6495ff;
+  color: white;
+}
+
+::-moz-selection {
+  background-color: #6495ff;
+  color: white;
+}
+
+/* Link styles */
+a {
+  @apply text-primary-600 hover:text-primary-700 transition-colors;
+}
+
+/* Divider */
+.divider {
+  @apply border-t border-neutral-200;
+}
+
+/* Container */
+.container {
+  @apply max-w-7xl mx-auto;
+}
+
+/* Utilities */
+.text-truncate {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.line-clamp-1 {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+}
