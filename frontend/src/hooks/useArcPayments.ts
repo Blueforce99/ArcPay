@@ -193,7 +193,7 @@ export function useArcPayments({
 
         // Extract payment ID from events
         const event = receipt?.logs
-          ?.map(log => {
+          ?.map((log: any) => {
             try {
               return contract.interface.parseLog(log);
             } catch {
