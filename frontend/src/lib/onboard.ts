@@ -2,10 +2,15 @@
 
 import Onboard from '@web3-onboard/core';
 import injectedModule from '@web3-onboard/injected-wallets';
+import walletConnectModule from '@web3-onboard/walletconnect';
+import coinbaseModule from '@web3-onboard/coinbase';
+import ledgerModule from '@web3-onboard/ledger';
+import keystoneModule from '@web3-onboard/keystone';
 
 // Arc Testnet configuration - use environment variable or default
 const ARC_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_ARC_CHAIN_ID || '5042002', 10);
 const ARC_RPC_URL = process.env.NEXT_PUBLIC_ARC_RPC_URL || 'https://rpc.testnet.arc.network';
+const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'arc-cross-border-payments';
 
 const arcTestnet = {
   id: `0x${ARC_CHAIN_ID.toString(16)}`, // Convert to hex with 0x prefix
@@ -19,6 +24,7 @@ console.log('🔗 Arc Network Config:', {
   chainId: ARC_CHAIN_ID,
   chainIdHex: arcTestnet.id,
   rpcUrl: ARC_RPC_URL,
+  wcProjectId: WC_PROJECT_ID,
 });
 
 let onboardInstance: any = null;
@@ -35,12 +41,34 @@ function initializeOnboard() {
   }
 
   try {
-    const injected = injectedModule();
+    // Initialize wallet modules
+    const injected = injectedModule({
+      displayUnavailable: true, // Show unavailable wallets grayed out
+    });
 
-    console.log('🔧 Initializing web3-onboard...');
+    const walletConnect = walletConnectModule({
+      projectId: WC_PROJECT_ID,
+      version: 2,
+    });
+
+    const coinbase = coinbaseModule();
+
+    const ledger = ledgerModule({
+      projectId: WC_PROJECT_ID,
+    });
+
+    const keystone = keystoneModule();
+
+    console.log('🔧 Initializing web3-onboard with multiple wallet modules...');
 
     onboardInstance = Onboard({
-      wallets: [injected],
+      wallets: [
+        injected,
+        walletConnect,
+        coinbase,
+        ledger,
+        keystone,
+      ],
       chains: [arcTestnet as any],
       appMetadata: {
         name: 'Arc Cross-Border Payments',
@@ -50,6 +78,9 @@ function initializeOnboard() {
           { name: 'MetaMask', url: 'https://metamask.io' },
           { name: 'Rabby Wallet', url: 'https://rabby.io' },
           { name: 'OKX Wallet', url: 'https://www.okx.com/web3' },
+          { name: 'Trust Wallet', url: 'https://trustwallet.com' },
+          { name: 'Brave Wallet', url: 'https://brave.com/wallet' },
+          { name: 'Phantom', url: 'https://phantom.app' },
         ],
       },
       accountCenter: {
@@ -61,11 +92,14 @@ function initializeOnboard() {
         },
       },
       connect: {
-        autoConnectLastWallet: false,
+        autoConnectLastWallet: true, // Remember last connected wallet
+      },
+      notify: {
+        enabled: true,
       },
     });
 
-    console.log('✅ web3-onboard initialized successfully');
+    console.log('✅ web3-onboard initialized successfully with 5 wallet modules');
     
     // Clean up any stale wallet state on initialization
     cleanupStaleWallets();
