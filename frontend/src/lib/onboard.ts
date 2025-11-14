@@ -13,8 +13,8 @@ const ARC_RPC_URL = process.env.NEXT_PUBLIC_ARC_RPC_URL || 'https://rpc.testnet.
 const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
 
 const arcTestnet = {
-  id: `0x${ARC_CHAIN_ID.toString(16)}`, // Convert to hex with 0x prefix
-  token: 'USDC',
+  id: `0x${ARC_CHAIN_ID.toString(16)}`, // Convert to hex with 0x prefix - should be 0x4cef52
+  token: 'ARC',
   label: 'Arc Testnet',
   rpcUrl: ARC_RPC_URL,
   blockExplorerUrl: 'https://testnet.arcscan.app',
@@ -67,7 +67,7 @@ function initializeOnboard() {
         rpcUrl: 'https://polygon-rpc.com',
         blockExplorerUrl: 'https://polygonscan.com',
       },
-      // Arc Testnet
+      // Arc Testnet - MUST be in the chains list
       arcTestnet,
     ];
 
@@ -154,7 +154,7 @@ function initializeOnboard() {
         },
       },
       connect: {
-        autoConnectLastWallet: true,
+        autoConnectLastWallet: false, // IMPORTANT: Disable auto-connect to force explicit switch
       },
       notify: {
         enabled: false,
@@ -162,38 +162,11 @@ function initializeOnboard() {
     });
 
     console.log('✅ web3-onboard initialized successfully with', wallets.length, 'modules');
-    cleanupStaleWallets();
     
     return onboardInstance;
   } catch (error) {
     console.error('❌ Failed to initialize onboard:', error);
     throw error;
-  }
-}
-
-/**
- * Clean up stale wallet connections from previous browser sessions
- */
-async function cleanupStaleWallets() {
-  try {
-    if (!onboardInstance) return;
-    
-    const state = onboardInstance.state.get();
-    const wallets = state.wallets;
-    
-    if (wallets && wallets.length > 0) {
-      console.log('🧹 Cleaning up stale wallets from previous session');
-      
-      for (const wallet of wallets) {
-        try {
-          await onboardInstance.disconnectWallet({ label: wallet.label });
-        } catch (err: any) {
-          console.warn('⚠️ Cleanup warning for', wallet.label, ':', err.message);
-        }
-      }
-    }
-  } catch (err: any) {
-    console.warn('⚠️ Cleanup error:', err.message);
   }
 }
 
@@ -209,7 +182,19 @@ export async function resetOnboard() {
     console.log('🔄 Resetting onboard instance...');
     
     if (onboardInstance) {
-      await cleanupStaleWallets();
+      const state = onboardInstance.state.get();
+      const wallets = state.wallets;
+      
+      if (wallets && wallets.length > 0) {
+        console.log('🧹 Disconnecting wallets...');
+        for (const wallet of wallets) {
+          try {
+            await onboardInstance.disconnectWallet({ label: wallet.label });
+          } catch (err: any) {
+            console.warn('⚠️ Cleanup warning for', wallet.label, ':', err.message);
+          }
+        }
+      }
     }
     
     onboardInstance = null;
@@ -220,90 +205,150 @@ export async function resetOnboard() {
 }
 
 /**
- * Add Arc Testnet to wallet if not present
+ * Add Arc Testnet to wallet
+ * CRITICAL: Correct native currency configuration
  */
-async function addArcNetworkToWallet(provider: any): Promise<void> {
+async function addArcNetworkToWallet(provider: any): Promise<boolean> {
   try {
-    console.log('🔌 Attempting to add Arc Testnet to wallet...');
+    console.log('🔌 [ADD_NETWORK] Attempting to add Arc Testnet to wallet...');
+    console.log('📋 Network params:', {
+      chainId: arcTestnet.id,
+      chainName: 'Arc Testnet',
+      rpcUrl: ARC_RPC_URL,
+    });
     
     await provider.request({
       method: 'wallet_addEthereumChain',
       params: [
         {
-          chainId: arcTestnet.id,
+          chainId: arcTestnet.id, // 0x4cef52
           chainName: 'Arc Testnet',
           rpcUrls: [ARC_RPC_URL],
           blockExplorerUrls: ['https://testnet.arcscan.app'],
           nativeCurrency: {
-            name: 'USD Coin',
-            symbol: 'USDC',
-            decimals: 6,
+            name: 'Arc',
+            symbol: 'ARC',
+            decimals: 18,
           },
         },
       ],
     });
     
-    console.log('✅ Arc Testnet added to wallet');
+    console.log('✅ [ADD_NETWORK] Arc Testnet added to wallet');
+    return true;
   } catch (err: any) {
-    console.warn('⚠️ Failed to add Arc Testnet:', err.message);
-  }
-}
-
-/**
- * Force switch to Arc testnet via wallet provider
- */
-async function switchViaWalletProvider(provider: any): Promise<boolean> {
-  try {
-    console.log('📡 Forcing network switch to Arc Testnet (chainId:', arcTestnet.id, ')');
-    
-    // Step 1: Try to switch to Arc network
-    try {
-      await provider.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: arcTestnet.id }],
-      });
-      
-      console.log('✅ Switched to Arc network via wallet_switchEthereumChain');
-      return true;
-    } catch (switchErr: any) {
-      // If the chain is not added, add it first then switch
-      if (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain ID')) {
-        console.log('🔌 Arc Testnet not in wallet, adding it first...');
-        
-        await addArcNetworkToWallet(provider);
-        
-        // Now try to switch again
-        await provider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: arcTestnet.id }],
-        });
-        
-        console.log('✅ Arc network added and switched');
-        return true;
-      } else {
-        throw switchErr;
-      }
-    }
-  } catch (err: any) {
-    console.error('❌ Failed to switch to Arc network:', err.message);
+    console.warn('⚠️ [ADD_NETWORK] Failed to add Arc Testnet:', err.code, err.message);
+    // Don't throw - continue with switch even if add fails
     return false;
   }
 }
 
 /**
- * Switch to Arc testnet - This is called after wallet connection
- * IMPORTANT: This forces the wallet to switch to Arc Testnet
+ * Switch wallet to Arc Testnet
+ * Handles both cases: network exists OR needs to be added first
+ */
+async function switchToArcViaProvider(provider: any): Promise<boolean> {
+  try {
+    console.log('🔀 [SWITCH] Attempting to switch to Arc Testnet (', arcTestnet.id, ')');
+    
+    // Step 1: Try to switch directly
+    try {
+      console.log('📡 [SWITCH] Requesting wallet_switchEthereumChain...');
+      await provider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: arcTestnet.id }],
+      });
+      
+      console.log('✅ [SWITCH] Successfully switched to Arc Testnet');
+      return true;
+    } catch (switchErr: any) {
+      console.warn('⚠️ [SWITCH] wallet_switchEthereumChain failed:', switchErr.code, switchErr.message);
+      
+      // Step 2: If chain not found (error code 4902), add it first
+      if (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain ID')) {
+        console.log('🔌 [SWITCH] Chain not found (4902), adding Arc Testnet first...');
+        
+        const added = await addArcNetworkToWallet(provider);
+        
+        // Step 3: Try to switch again after adding
+        console.log('🔀 [SWITCH] Retrying wallet_switchEthereumChain after adding network...');
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: arcTestnet.id }],
+        });
+        
+        console.log('✅ [SWITCH] Successfully added and switched to Arc Testnet');
+        return true;
+      } else {
+        console.error('❌ [SWITCH] Switch failed with unexpected error:', switchErr.message);
+        throw switchErr;
+      }
+    }
+  } catch (err: any) {
+    console.error('❌ [SWITCH] Fatal error switching to Arc network:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Connect to wallet and immediately switch to Arc Testnet
+ * This is the main entry point from the UI
+ */
+export async function connectToWallet() {
+  try {
+    console.log('🔌 [CONNECT] connectToWallet called');
+    const instance = getOnboard();
+    
+    if (!instance) {
+      throw new Error('Onboard instance not available');
+    }
+
+    // Step 1: Connect wallet
+    console.log('📦 [CONNECT] Calling instance.connectWallet()...');
+    const wallets = await instance.connectWallet();
+    
+    if (!wallets || wallets.length === 0) {
+      throw new Error('No wallet connected');
+    }
+    
+    console.log('✅ [CONNECT] Wallet connected:', wallets[0].label);
+    const connectedWallet = wallets[0];
+
+    // Step 2: IMMEDIATELY switch to Arc Testnet
+    console.log('🔀 [CONNECT] Now switching to Arc Testnet...');
+    if (!connectedWallet.provider) {
+      throw new Error('Wallet provider not available');
+    }
+
+    const switched = await switchToArcViaProvider(connectedWallet.provider);
+    
+    if (switched) {
+      console.log('✅ [CONNECT] COMPLETE: Wallet connected and switched to Arc Testnet');
+      return connectedWallet;
+    } else {
+      console.warn('⚠️ [CONNECT] Wallet connected but network switch failed. Please manually switch to Arc Testnet in your wallet.');
+      console.warn('   Network to add: Arc Testnet (Chain ID: 5042002 / 0x4cef52)');
+      console.warn('   RPC URL: ' + ARC_RPC_URL);
+      return connectedWallet;
+    }
+  } catch (error) {
+    console.error('❌ [CONNECT] Failed to connect wallet:', error);
+    throw error;
+  }
+}
+
+/**
+ * Explicitly switch to Arc network (can be called anytime)
  */
 export async function switchToArcNetwork() {
   try {
-    console.log('🔀 [CRITICAL] Switching to Arc network - chainId:', ARC_CHAIN_ID);
+    console.log('🔀 [MANUAL_SWITCH] Manual network switch requested');
     
     const instance = getOnboard();
     if (!instance) {
       throw new Error('Onboard instance not available');
     }
 
-    // Get the current wallet
     const state = instance.state.get();
     const wallets = state.wallets;
     
@@ -312,69 +357,23 @@ export async function switchToArcNetwork() {
     }
 
     const currentWallet = wallets[0];
-    console.log('📱 Current wallet:', currentWallet.label);
+    console.log('📱 [MANUAL_SWITCH] Current wallet:', currentWallet.label);
 
-    // Get the wallet provider
     if (!currentWallet.provider) {
       throw new Error('Wallet provider not available');
     }
 
-    // FORCE switch via wallet provider (most reliable)
-    const success = await switchViaWalletProvider(currentWallet.provider);
+    const success = await switchToArcViaProvider(currentWallet.provider);
     
-    if (success) {
-      console.log('✅ [SUCCESS] Arc Testnet is now active');
-      return true;
+    if (!success) {
+      throw new Error('Failed to switch to Arc Testnet');
     }
 
-    // If direct provider switch failed, try onboard setChain as fallback
-    console.log('🔀 Fallback: Trying onboard.setChain()...');
-    try {
-      await instance.setChain({ chainId: arcTestnet.id });
-      console.log('✅ Switched to Arc network via onboard.setChain()');
-      return true;
-    } catch (onboardErr: any) {
-      console.error('❌ onboard.setChain() also failed:', onboardErr.message);
-      throw new Error('Failed to switch to Arc Testnet. Please manually switch in your wallet to Arc Testnet (Chain ID: 5042002)');
-    }
+    console.log('✅ [MANUAL_SWITCH] Successfully switched to Arc Testnet');
+    return true;
   } catch (err: any) {
-    console.error('❌ [FAILED] Switch to Arc network error:', err.message);
+    console.error('❌ [MANUAL_SWITCH] Error:', err.message);
     throw err;
-  }
-}
-
-export const onboard = new Proxy({} as any, {
-  get(target, prop) {
-    const instance = getOnboard();
-    if (!instance) {
-      throw new Error('Onboard not initialized');
-    }
-    return (instance as any)[prop];
-  },
-});
-
-export async function connectToWallet() {
-  try {
-    console.log('🔌 connectToWallet called');
-    const instance = getOnboard();
-    
-    if (!instance) {
-      throw new Error('Onboard instance not available');
-    }
-
-    console.log('📦 Calling instance.connectWallet()...');
-    const wallets = await instance.connectWallet();
-    
-    console.log('✅ connectWallet result:', wallets);
-    
-    if (!wallets || wallets.length === 0) {
-      throw new Error('No wallet connected');
-    }
-    
-    return wallets[0];
-  } catch (error) {
-    console.error('❌ Failed to connect wallet:', error);
-    throw error;
   }
 }
 
@@ -417,3 +416,13 @@ export async function switchNetwork(chainId: string) {
     throw error;
   }
 }
+
+export const onboard = new Proxy({} as any, {
+  get(target, prop) {
+    const instance = getOnboard();
+    if (!instance) {
+      throw new Error('Onboard not initialized');
+    }
+    return (instance as any)[prop];
+  },
+});
