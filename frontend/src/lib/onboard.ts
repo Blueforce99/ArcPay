@@ -51,9 +51,13 @@ function initializeOnboard() {
 
     if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
       try {
+        // Add common chains that WalletConnect recognizes, plus Arc Testnet
         const walletConnect = walletConnectModule({
           projectId: WC_PROJECT_ID,
           version: 2,
+          qrcodeModalOptions: {
+            themeMode: 'light',
+          },
         });
         wallets.push(walletConnect);
         console.log('✅ WalletConnect enabled');
@@ -88,9 +92,39 @@ function initializeOnboard() {
 
     console.log('🔧 Initializing web3-onboard with wallet modules...');
 
+    // Define supported chains including common ones + Arc Testnet
+    const chains = [
+      // Ethereum Mainnet (for wallet compatibility)
+      {
+        id: '0x1',
+        token: 'ETH',
+        label: 'Ethereum Mainnet',
+        rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/demo',
+        blockExplorerUrl: 'https://etherscan.io',
+      },
+      // Sepolia Testnet (common test network)
+      {
+        id: '0xaa36a7',
+        token: 'ETH',
+        label: 'Sepolia Testnet',
+        rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/demo',
+        blockExplorerUrl: 'https://sepolia.etherscan.io',
+      },
+      // Polygon (for wallet compatibility)
+      {
+        id: '0x89',
+        token: 'MATIC',
+        label: 'Polygon',
+        rpcUrl: 'https://polygon-rpc.com',
+        blockExplorerUrl: 'https://polygonscan.com',
+      },
+      // Arc Testnet
+      arcTestnet,
+    ];
+
     onboardInstance = Onboard({
       wallets,
-      chains: [arcTestnet as any],
+      chains,
       appMetadata: {
         name: 'Arc Cross-Border Payments',
         icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="%236495ff"/><text x="50" y="60" font-size="60" text-anchor="middle" fill="white" font-weight="bold">⚡</text></svg>',
