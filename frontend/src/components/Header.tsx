@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Globe, Menu, X, Wallet, LogOut } from 'lucide-react';
 import { formatAddress } from '@/lib/utils';
 import { toast } from 'react-toastify';
+import ChainSwitcher from './ChainSwitcher';
 
 interface HeaderProps {
   onConnectChange?: () => Promise<void> | void;
@@ -78,6 +79,8 @@ export default function Header({ onConnectChange, userAddress, onDisconnect }: H
 
         {/* Wallet Section */}
         <div className="flex items-center gap-4">
+	{/* Chain Switcher - Shows when wallet is connected */}
+	  <ChainSwitcher />
           {userAddress ? (
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Connected</span>
