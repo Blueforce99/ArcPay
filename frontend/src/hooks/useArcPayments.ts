@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'react-toastify';
 import { useOnboardContext } from '@/contexts/OnboardContext';
-import { getOnboard, switchToArcNetwork } from '@/lib/onboard';
+import { connectToWallet, switchToArcNetwork } from '@/lib/onboard';
 import {
   CROSS_BORDER_PAYMENTS_ABI,
   ERC20_ABI,
@@ -40,46 +40,25 @@ export function useArcPayments({
     return signer;
   }, [provider]);
 
-  // Connect wallet - open modal
-  const connectWallet = useCallback(async () => {
+  // Connect wallet - USES AUTOMATIC ARC NETWORK SWITCHING
+  const connectWalletFunc = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔌 connectWallet called');
+      console.log('🔌 [HOOK] connectWallet called');
       
-      const onboard = getOnboard();
-      console.log('📦 onboard instance:', onboard);
-      console.log('📦 onboard.connectWallet:', onboard?.connectWallet);
+      // Use the connectToWallet function which AUTOMATICALLY switches to Arc
+      console.log('🔌 [HOOK] Calling connectToWallet() with AUTO Arc switch...');
+      const wallet = await connectToWallet();
       
-      if (!onboard || !onboard.connectWallet) {
-        throw new Error('Onboard or connectWallet not available');
-      }
+      console.log('✅ [HOOK] connectToWallet returned:', wallet?.label);
+      console.log('✅ [HOOK] Successfully connected wallet with automatic Arc Testnet switch');
       
-      console.log('🔌 Calling onboard.connectWallet()...');
-      const wallets = await onboard.connectWallet();
-      console.log('✅ connectWallet returned:', wallets);
-      
-      if (!wallets || wallets.length === 0) {
-        console.warn('⚠️ No wallets returned from connectWallet');
-        throw new Error('No wallet selected');
-      }
-      
-      console.log('✅ Successfully connected wallet:', wallets[0].label);
-      
-      // Step 2: Switch to Arc network
-      console.log('🔀 Switching to Arc network after wallet connection...');
-      try {
-        await switchToArcNetwork();
-        console.log('✅ Successfully switched to Arc network');
-      } catch (networkErr: any) {
-        console.warn('⚠️ Network switch failed:', networkErr.message);
-        toast.warning('⚠️ Failed to switch network. Please switch manually to Arc Testnet (5042002)');
-        // Don't throw - wallet is connected even if network switch fails
-      }
     } catch (err: any) {
       const message = err.message || 'Failed to connect wallet';
-      console.error('❌ Connection error:', message, err);
+      console.error('❌ [HOOK] Connection error:', message, err);
       setError(message);
+      toast.error(`❌ ${message}`);
       throw err;
     } finally {
       setLoading(false);
@@ -311,7 +290,7 @@ export function useArcPayments({
     loading,
     error,
     userAddress,
-    connectWallet,
+    connectWallet: connectWalletFunc,
     approveToken,
     initiatePayment,
     getPaymentDetails,
