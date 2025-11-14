@@ -55,6 +55,7 @@ function initializeOnboard() {
 
     const ledger = ledgerModule({
       projectId: WC_PROJECT_ID,
+      walletConnectVersion: 2,
     });
 
     const keystone = keystoneModule();
