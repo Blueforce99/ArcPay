@@ -41,58 +41,7 @@ function initializeOnboard() {
   }
 
   try {
-    // Initialize wallet modules
-    const injected = injectedModule({
-      displayUnavailable: true, // Show unavailable wallets grayed out
-    });
-
-    // WalletConnect is optional - only include if project ID is configured
-    const wallets: any[] = [injected];
-
-    if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
-      try {
-        // Add common chains that WalletConnect recognizes, plus Arc Testnet
-        const walletConnect = walletConnectModule({
-          projectId: WC_PROJECT_ID,
-          version: 2,
-          qrcodeModalOptions: {
-            themeMode: 'light',
-          },
-        });
-        wallets.push(walletConnect);
-        console.log('✅ WalletConnect enabled');
-      } catch (err) {
-        console.warn('⚠️ WalletConnect initialization failed:', err);
-      }
-    } else {
-      console.warn('⚠️ WalletConnect disabled: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID not configured');
-    }
-
-    const coinbase = coinbaseModule();
-    wallets.push(coinbase);
-
-    // Ledger is optional - requires valid WalletConnect project ID
-    if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
-      try {
-        const ledger = ledgerModule({
-          projectId: WC_PROJECT_ID,
-          walletConnectVersion: 2,
-        });
-        wallets.push(ledger);
-        console.log('✅ Ledger enabled');
-      } catch (err) {
-        console.warn('⚠️ Ledger initialization failed:', err);
-      }
-    } else {
-      console.warn('⚠️ Ledger disabled: requires WalletConnect project ID');
-    }
-
-    const keystone = keystoneModule();
-    wallets.push(keystone);
-
-    console.log('🔧 Initializing web3-onboard with wallet modules...');
-
-    // Define supported chains including common ones + Arc Testnet
+    // Define supported chains - include common ones for wallet compatibility
     const chains = [
       // Ethereum Mainnet (for wallet compatibility)
       {
@@ -122,6 +71,65 @@ function initializeOnboard() {
       arcTestnet,
     ];
 
+    // Initialize wallet modules
+    const injected = injectedModule({
+      displayUnavailable: true,
+    });
+
+    const wallets: any[] = [injected];
+
+    // Add WalletConnect if configured
+    if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
+      try {
+        console.log('📡 Initializing WalletConnect with project ID:', WC_PROJECT_ID);
+        const walletConnect = walletConnectModule({
+          projectId: WC_PROJECT_ID,
+          version: 2,
+          dappUrl: typeof window !== 'undefined' ? window.location.origin : 'https://arc-pay.vercel.app',
+        });
+        wallets.push(walletConnect);
+        console.log('✅ WalletConnect module added');
+      } catch (err: any) {
+        console.warn('⚠️ WalletConnect initialization failed:', err.message);
+      }
+    } else {
+      console.warn('⚠️ WalletConnect disabled: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID not configured');
+    }
+
+    // Add Coinbase
+    try {
+      const coinbase = coinbaseModule();
+      wallets.push(coinbase);
+      console.log('✅ Coinbase module added');
+    } catch (err: any) {
+      console.warn('⚠️ Coinbase initialization failed:', err.message);
+    }
+
+    // Add Ledger if WalletConnect is configured
+    if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
+      try {
+        const ledger = ledgerModule({
+          projectId: WC_PROJECT_ID,
+          walletConnectVersion: 2,
+        });
+        wallets.push(ledger);
+        console.log('✅ Ledger module added');
+      } catch (err: any) {
+        console.warn('⚠️ Ledger initialization failed:', err.message);
+      }
+    }
+
+    // Add Keystone
+    try {
+      const keystone = keystoneModule();
+      wallets.push(keystone);
+      console.log('✅ Keystone module added');
+    } catch (err: any) {
+      console.warn('⚠️ Keystone initialization failed:', err.message);
+    }
+
+    console.log('🔧 Initializing web3-onboard with', wallets.length, 'wallet modules');
+
     onboardInstance = Onboard({
       wallets,
       chains,
@@ -135,7 +143,6 @@ function initializeOnboard() {
           { name: 'OKX Wallet', url: 'https://www.okx.com/web3' },
           { name: 'Trust Wallet', url: 'https://trustwallet.com' },
           { name: 'Brave Wallet', url: 'https://brave.com/wallet' },
-          { name: 'Phantom', url: 'https://phantom.app' },
         ],
       },
       accountCenter: {
@@ -147,16 +154,14 @@ function initializeOnboard() {
         },
       },
       connect: {
-        autoConnectLastWallet: true, // Remember last connected wallet
+        autoConnectLastWallet: true,
       },
       notify: {
-        enabled: false, // Disable notifications for now
+        enabled: false,
       },
     });
 
-    console.log('✅ web3-onboard initialized successfully');
-    
-    // Clean up any stale wallet state on initialization
+    console.log('✅ web3-onboard initialized successfully with', wallets.length, 'modules');
     cleanupStaleWallets();
     
     return onboardInstance;
@@ -168,7 +173,6 @@ function initializeOnboard() {
 
 /**
  * Clean up stale wallet connections from previous browser sessions
- * This helps when switching between different wallet providers
  */
 async function cleanupStaleWallets() {
   try {
@@ -178,14 +182,13 @@ async function cleanupStaleWallets() {
     const wallets = state.wallets;
     
     if (wallets && wallets.length > 0) {
-      console.log('🧹 Cleaning up stale wallets from previous session:', wallets.map((w: any) => w.label));
+      console.log('🧹 Cleaning up stale wallets from previous session');
       
       for (const wallet of wallets) {
         try {
           await onboardInstance.disconnectWallet({ label: wallet.label });
-          console.log('✅ Cleaned up wallet:', wallet.label);
         } catch (err: any) {
-          console.warn('⚠️ Failed to cleanup wallet:', wallet.label, err.message);
+          console.warn('⚠️ Cleanup warning for', wallet.label, ':', err.message);
         }
       }
     }
@@ -201,16 +204,11 @@ export function getOnboard() {
   return onboardInstance;
 }
 
-/**
- * Reset the onboard instance and clean up state
- * Useful when switching between different wallet providers
- */
 export async function resetOnboard() {
   try {
     console.log('🔄 Resetting onboard instance...');
     
     if (onboardInstance) {
-      // Cleanup existing wallets
       await cleanupStaleWallets();
     }
     
@@ -221,10 +219,6 @@ export async function resetOnboard() {
   }
 }
 
-/**
- * Switch to Arc testnet via wallet provider
- * This is more aggressive than onboard.setChain and works better with most wallets
- */
 async function switchViaWalletProvider(provider: any): Promise<boolean> {
   try {
     console.log('📡 Attempting to switch network via wallet_switchEthereumChain...');
@@ -234,10 +228,9 @@ async function switchViaWalletProvider(provider: any): Promise<boolean> {
       params: [{ chainId: arcTestnet.id }],
     });
     
-    console.log('✅ Switched to Arc network via wallet_switchEthereumChain');
+    console.log('✅ Switched to Arc network');
     return true;
   } catch (switchErr: any) {
-    // If the chain is not added, try to add it
     if (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain ID')) {
       console.log('🔌 Chain not found, attempting to add Arc network...');
       
@@ -272,19 +265,15 @@ async function switchViaWalletProvider(provider: any): Promise<boolean> {
   }
 }
 
-/**
- * Switch to Arc testnet
- */
 export async function switchToArcNetwork() {
   try {
-    console.log('🔀 Switching to Arc network...', { chainId: ARC_CHAIN_ID, hex: arcTestnet.id });
+    console.log('🔀 Switching to Arc network...');
     
     const instance = getOnboard();
     if (!instance) {
       throw new Error('Onboard instance not available');
     }
 
-    // First, try to get the wallet provider and switch directly
     const state = instance.state.get();
     const wallets = state.wallets;
     
@@ -295,7 +284,6 @@ export async function switchToArcNetwork() {
       }
     }
 
-    // Fallback: Try onboard's setChain method
     console.log('🔀 Fallback: Trying onboard.setChain()...');
     await instance.setChain({ chainId: arcTestnet.id });
     console.log('✅ Switched to Arc network via onboard');
