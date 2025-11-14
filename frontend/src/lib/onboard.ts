@@ -10,7 +10,7 @@ import keystoneModule from '@web3-onboard/keystone';
 // Arc Testnet configuration - use environment variable or default
 const ARC_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_ARC_CHAIN_ID || '5042002', 10);
 const ARC_RPC_URL = process.env.NEXT_PUBLIC_ARC_RPC_URL || 'https://rpc.testnet.arc.network';
-const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'arc-cross-border-payments';
+const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
 
 const arcTestnet = {
   id: `0x${ARC_CHAIN_ID.toString(16)}`, // Convert to hex with 0x prefix
@@ -24,7 +24,7 @@ console.log('🔗 Arc Network Config:', {
   chainId: ARC_CHAIN_ID,
   chainIdHex: arcTestnet.id,
   rpcUrl: ARC_RPC_URL,
-  wcProjectId: WC_PROJECT_ID,
+  wcProjectId: WC_PROJECT_ID ? 'configured' : 'not configured (WalletConnect disabled)',
 });
 
 let onboardInstance: any = null;
@@ -46,30 +46,50 @@ function initializeOnboard() {
       displayUnavailable: true, // Show unavailable wallets grayed out
     });
 
-    const walletConnect = walletConnectModule({
-      projectId: WC_PROJECT_ID,
-      version: 2,
-    });
+    // WalletConnect is optional - only include if project ID is configured
+    const wallets: any[] = [injected];
+
+    if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
+      try {
+        const walletConnect = walletConnectModule({
+          projectId: WC_PROJECT_ID,
+          version: 2,
+        });
+        wallets.push(walletConnect);
+        console.log('✅ WalletConnect enabled');
+      } catch (err) {
+        console.warn('⚠️ WalletConnect initialization failed:', err);
+      }
+    } else {
+      console.warn('⚠️ WalletConnect disabled: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID not configured');
+    }
 
     const coinbase = coinbaseModule();
+    wallets.push(coinbase);
 
-    const ledger = ledgerModule({
-      projectId: WC_PROJECT_ID,
-      walletConnectVersion: 2,
-    });
+    // Ledger is optional - requires valid WalletConnect project ID
+    if (WC_PROJECT_ID && WC_PROJECT_ID.length > 0) {
+      try {
+        const ledger = ledgerModule({
+          projectId: WC_PROJECT_ID,
+          walletConnectVersion: 2,
+        });
+        wallets.push(ledger);
+        console.log('✅ Ledger enabled');
+      } catch (err) {
+        console.warn('⚠️ Ledger initialization failed:', err);
+      }
+    } else {
+      console.warn('⚠️ Ledger disabled: requires WalletConnect project ID');
+    }
 
     const keystone = keystoneModule();
+    wallets.push(keystone);
 
-    console.log('🔧 Initializing web3-onboard with multiple wallet modules...');
+    console.log('🔧 Initializing web3-onboard with wallet modules...');
 
     onboardInstance = Onboard({
-      wallets: [
-        injected,
-        walletConnect,
-        coinbase,
-        ledger,
-        keystone,
-      ],
+      wallets,
       chains: [arcTestnet as any],
       appMetadata: {
         name: 'Arc Cross-Border Payments',
@@ -96,11 +116,11 @@ function initializeOnboard() {
         autoConnectLastWallet: true, // Remember last connected wallet
       },
       notify: {
-        enabled: true,
+        enabled: false, // Disable notifications for now
       },
     });
 
-    console.log('✅ web3-onboard initialized successfully with 5 wallet modules');
+    console.log('✅ web3-onboard initialized successfully');
     
     // Clean up any stale wallet state on initialization
     cleanupStaleWallets();
